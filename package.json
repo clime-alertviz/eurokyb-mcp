@@ -1,0 +1,40 @@
+{
+  "name": "eurokyb-mcp",
+  "version": "1.0.0",
+  "mcpName": "com.alertviz/eurokyb-mcp",
+  "description": "Zero-dependency MCP client bridge to live EuroKYB & SEPA Compliance API (EU VIES VAT, Czech ARES + ADIS §109, IBAN Mod-97, SSRF-safe Markdown/TLS audit).",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "eurokyb-mcp": "./bin/eurokyb-mcp.mjs"
+  },
+  "files": [
+    "bin/",
+    "LICENSE",
+    "README.md",
+    "glama.json",
+    "server.json"
+  ],
+  "scripts": {
+    "test": "node --test test/stdio.test.mjs"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "eu-vat",
+    "vies",
+    "ares",
+    "czech-kyb",
+    "iban",
+    "compliance"
+  ],
+  "homepage": "https://alertviz.com/eurokyb/",
+  "author": "Bc. Michal Novotny <info@alertviz.com>",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clime-alertviz/eurokyb-mcp.git"
+  }
+}
