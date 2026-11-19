@@ -125,3 +125,13 @@ test('a slow registry lookup leaves the bridge responsive to a ping', async () =
     srv.close();
   }
 });
+
+test('the release descriptor identifies the bridge in this package', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const read = async name => JSON.parse(await readFile(path.join(__dirname, '..', name), 'utf8'));
+  const [pkg, descriptor] = await Promise.all([read('package.json'), read('server.json')]);
+  const entry = descriptor.packages.find(item => item.registryType === 'npm');
+  assert.equal(entry.identifier, pkg.name);
+  assert.equal(entry.version, pkg.version);
+  assert.equal(descriptor.name, pkg.mcpName);
+});
