@@ -30,6 +30,6 @@ EuroKYB gives agents read-only tools for checking Czech suppliers, EU VAT number
 }
 ```
 
-Node.js 18 or newer is required for the bridge. It sends tool arguments to the hosted EuroKYB service, including IBANs. IBAN checks are computed there without a bank lookup. Website requests contact the supplied destination. Free access is limited to 20 requests per minute per IP. A direct Pro key can be supplied via the bridge’s `EUROKYB_API_KEY` environment variable or the remote client’s `X-API-Key` header. Rate-limited requests return HTTP 429. Wait for the next minute before retrying.
+Node.js 18 or newer is required for the bridge. It sends tool arguments to the hosted EuroKYB service, including IBANs. IBAN checks are computed there without a bank lookup. Website requests contact the supplied destination. Free access is limited to 20 requests per minute per IP. A direct Pro key can be supplied via the bridge’s `EUROKYB_API_KEY` environment variable or the remote client’s `X-API-Key` header. Rate-limited requests return HTTP 429. Use Retry-After to schedule a retry. Direct Pro company checks and company badges share a 10,000-call UTC calendar-month allowance across REST and MCP.
 
 Set `EUROKYB_MCP_URL` to use a compatible JSON-response endpoint for testing. Run `npm test` to check the stdio transport against a local fixture. The bridge repository is MIT licensed. [EuroKYB website and API](https://alertviz.com/eurokyb/)

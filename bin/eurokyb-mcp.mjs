@@ -49,7 +49,9 @@ async function forward(request) {
     }
     if (!response.ok || response.status === 202 || response.status === 204) {
       await response.body?.cancel();
-      return error(request.id, -32000, 'Upstream HTTP ' + response.status);
+      const delay = response.headers.get('Retry-After');
+      const retry = response.status === 429 && /^\d+$/.test(delay || '') ? '. Retry after ' + delay + ' seconds.' : '';
+      return error(request.id, -32000, 'Upstream HTTP ' + response.status + retry);
     }
     const reply = await response.json();
     if (reply?.jsonrpc !== '2.0' || reply.id !== request.id ||
