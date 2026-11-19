@@ -1,65 +1,81 @@
 #!/usr/bin/env node
-/**
- * Zero-dependency MCP stdio-to-Streamable-HTTP bridge for https://alertviz.com/api/eurokyb/mcp
- */
 import dns from 'node:dns';
 import readline from 'node:readline';
 
 dns.setDefaultResultOrder?.('ipv4first');
 
-const ENDPOINT = process.env.EUROKYB_MCP_URL || 'https://alertviz.com/api/eurokyb/mcp';
-const API_KEY = process.env.EUROKYB_API_KEY || '';
+const endpoint = process.env.EUROKYB_MCP_URL || 'https://alertviz.com/api/eurokyb/mcp';
+const apiKey = process.env.EUROKYB_API_KEY;
+let protocolVersion;
 
-async function handleLine(line) {
-  const trimmed = line.trim();
-  if (!trimmed) return;
-  let parsed;
+function send(message) {
+  process.stdout.write(JSON.stringify(message) + '\n');
+}
+
+function error(id, code, message) {
+  send({ jsonrpc: '2.0', id, error: { code, message } });
+}
+
+function parseRequest(line) {
+  if (!line.trim()) return;
+  let request;
   try {
-    parsed = JSON.parse(trimmed);
+    request = JSON.parse(line);
   } catch {
-    process.stdout.write(
-      JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }) + '\n'
-    );
-    return;
+    return error(null, -32700, 'Parse error');
+  }
+  if (!request || request.jsonrpc !== '2.0' || typeof request.method !== 'string' ||
+      !request.method || ('id' in request && typeof request.id !== 'string' && !Number.isSafeInteger(request.id))) {
+    return error(null, -32600, 'Invalid JSON-RPC request');
   }
 
-  const headers = { 'Content-Type': 'application/json' };
-  if (API_KEY) headers['X-API-Key'] = API_KEY;
+  return request;
+}
+
+async function forward(request) {
+  const notification = !('id' in request);
+  const headers = { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' };
+  if (apiKey) headers['X-API-Key'] = apiKey;
+  if (protocolVersion && request.method !== 'initialize') headers['MCP-Protocol-Version'] = protocolVersion;
 
   try {
-    const res = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(parsed),
+    const response = await fetch(endpoint, {
+      method: 'POST', headers, body: JSON.stringify(request),
+      signal: AbortSignal.timeout(90000), redirect: 'error',
     });
-    if (res.status === 202 || parsed.id === undefined) return;
-    if (!res.ok) {
-      process.stdout.write(
-        JSON.stringify({
-          jsonrpc: '2.0',
-          id: parsed.id,
-          error: { code: -32000, message: `Upstream HTTP ${res.status}` },
-        }) + '\n'
-      );
+    if (notification) {
+      await response.body?.cancel();
       return;
     }
-    const text = await res.text();
-    if (text.trim()) process.stdout.write(text.trim() + '\n');
-  } catch (err) {
-    if (parsed.id !== undefined) {
-      process.stdout.write(
-        JSON.stringify({
-          jsonrpc: '2.0',
-          id: parsed.id,
-          error: { code: -32000, message: err instanceof Error ? err.message : String(err) },
-        }) + '\n'
-      );
+    if (!response.ok || response.status === 202 || response.status === 204) {
+      await response.body?.cancel();
+      return error(request.id, -32000, 'Upstream HTTP ' + response.status);
     }
+    const reply = await response.json();
+    if (reply?.jsonrpc !== '2.0' || reply.id !== request.id ||
+        Object.hasOwn(reply, 'result') === Object.hasOwn(reply, 'error')) {
+      return error(request.id, -32000, 'Invalid upstream JSON-RPC response');
+    }
+    if (request.method === 'initialize' && typeof reply.result?.protocolVersion === 'string') {
+      protocolVersion = reply.result.protocolVersion;
+    }
+    send(reply);
+  } catch (err) {
+    if (!notification) error(request.id, -32000, err.message || 'Upstream request failed');
   }
 }
 
-const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
-let queue = Promise.resolve();
-rl.on('line', (line) => {
-  queue = queue.then(() => handleLine(line));
-});
+const lines = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
+const activeCalls = new Set();
+for await (const line of lines) {
+  const request = parseRequest(line);
+  if (!request) continue;
+  if (request.method !== 'tools/call') {
+    await forward(request);
+    continue;
+  }
+  if (activeCalls.size >= 8) await Promise.race(activeCalls);
+  const call = forward(request).finally(() => activeCalls.delete(call));
+  activeCalls.add(call);
+}
+await Promise.all(activeCalls);

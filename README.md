@@ -1,36 +1,35 @@
-# eurokyb-mcp
+# EuroKYB MCP
 
-Zero-dependency MCP server & stdio bridge backed by **EuroKYB** (`https://alertviz.com/eurokyb/`), giving Claude Desktop, Cursor, Windsurf, Codex CLI, and automated agents instant compliance verification tools across Europe.
+EuroKYB gives agents read-only tools for checking Czech suppliers, EU VAT numbers, IBAN checksums, Czech National Bank rates and public web pages. Use the hosted endpoint directly or run the zero-dependency Node.js bridge in a client that uses stdio.
 
-## Tools Included
-- `check_czech_company_kyb` — Verify Czech company via official ARES + Finanční správa ADIS §109 VAT unreliability & insolvency status (`ico`).
-- `verify_eu_vat_vies` — Validate any EU 27-country VAT ID (`vat`) against European Commission VIES.
-- `verify_iban` — Validate ISO 13616 Mod-97 IBAN checksums (`iban`).
-- `audit_website_and_markdown` — SSRF-safe HTTP security/TLS audit or clean Markdown extraction (`url`, `mode`).
+| Tool | When to use it | How to read the result |
+| --- | --- | --- |
+| `check_czech_company_kyb` | Look up a Czech business. Pass its IČO as text, e.g. `"00094943"`. | ARES supplies registry flags. ADIS supplies VAT reliability and published accounts for VAT payers. Treat unknown evidence as inconclusive. |
+| `verify_eu_vat_vies` | Check a country-prefixed VAT number with the European Commission’s VIES service. | Read `status` as VALID, INVALID or UNKNOWN. An upstream connection failure can also return a tool error. |
+| `verify_iban` | Check the format and checksum of an IBAN. Spaces and lowercase are accepted. | `valid` and `reason` describe the identifier. Ownership and account existence require separate evidence. |
+| `get_cnb_exchange_rates` | Omit arguments for the whole table. To convert, pass e.g. `{"currency":"EUR","amount":100}`. Supply `date` as DD.MM.YYYY for a historical fixing. | Read `publishedDate`. The conversion reports both the CZK equivalent of 100 EUR and the EUR equivalent of 100 CZK. |
+| `audit_website_and_markdown` | Pass a public HTTP(S) URL. Use `mode: "audit"` for header, TLS and DNS observations or `mode: "markdown"` for page text. | Both modes fetch the URL. Inspect the final HTTP status. For Markdown, check `truncated` before treating the text as complete. |
 
-- `get_cnb_exchange_rates` — Read Czech National Bank rates and convert invoice amounts.
+## Connect over HTTPS
 
-## Option A — Remote Streamable HTTP (No Install Required)
 ```json
 {
   "mcpServers": {
-    "eurokyb": {
-      "url": "https://alertviz.com/api/eurokyb/mcp"
-    }
+    "eurokyb": { "url": "https://alertviz.com/api/eurokyb/mcp" }
   }
 }
 ```
 
-## Option B — Local `stdio` via `npx`
+## Connect over stdio
+
 ```json
 {
   "mcpServers": {
-    "eurokyb": {
-      "command": "npx",
-      "args": ["-y", "eurokyb-mcp"]
-    }
+    "eurokyb": { "command": "npx", "args": ["-y", "eurokyb-mcp"] }
   }
 }
 ```
 
-*(Built by Bc. Michal Novotný • IČO 01346521 • `info@alertviz.com` • MIT License)*
+Node.js 18 or newer is required for the bridge. It sends tool arguments to the hosted EuroKYB service, including IBANs. IBAN checks are computed there without a bank lookup. Website requests contact the supplied destination. Free access is limited to 20 requests per minute per IP. A direct Pro key can be supplied via the bridge’s `EUROKYB_API_KEY` environment variable or the remote client’s `X-API-Key` header. Rate-limited requests return HTTP 429. Wait for the next minute before retrying.
+
+Set `EUROKYB_MCP_URL` to use a compatible JSON-response endpoint for testing. Run `npm test` to check the stdio transport against a local fixture. The bridge repository is MIT licensed. [EuroKYB website and API](https://alertviz.com/eurokyb/)
