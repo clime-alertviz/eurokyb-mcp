@@ -135,3 +135,18 @@ test('the release descriptor identifies the bridge in this package', async () =>
   assert.equal(entry.version, pkg.version);
   assert.equal(descriptor.name, pkg.mcpName);
 });
+
+test('monthly exhaustion includes the reason from the upstream JSON body', async () => {
+  const srv = http.createServer((req, res) => {
+    res.writeHead(429, {'Content-Type':'application/json','Retry-After':'86400','X-Checks-Remaining':'0'});
+    res.end(JSON.stringify({error:{data:{reason:'monthly_quota'}}}));
+  });
+  await new Promise(resolve => srv.listen(0,'127.0.0.1',resolve));
+  try {
+    const {out} = await runBridge(['{"jsonrpc":"2.0","id":4,"method":"tools/list"}'],
+      {EUROKYB_MCP_URL:'http://127.0.0.1:'+srv.address().port});
+    const {data} = JSON.parse(out).error;
+    assert.equal(data.reason,'monthly_quota');
+    assert.equal(data.retryAfter,86400);
+  } finally { srv.close(); }
+});

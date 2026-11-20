@@ -1,6 +1,6 @@
 {
   "name": "eurokyb-mcp",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "mcpName": "com.alertviz/eurokyb-mcp",
   "description": "Zero-dependency MCP client bridge to live EuroKYB & SEPA Compliance API (EU VIES VAT, Czech ARES + ADIS §109, IBAN Mod-97, SSRF-safe Markdown/TLS audit).",
   "type": "module",

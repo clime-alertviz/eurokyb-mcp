@@ -48,13 +48,12 @@ async function forward(request) {
       return;
     }
     if (!response.ok || response.status === 202 || response.status === 204) {
-      await response.body?.cancel();
       const delay = response.headers.get('Retry-After');
       const retry = response.status === 429 && /^\d+$/.test(delay || '') ? '. Retry after ' + delay + ' seconds.' : '';
       const body=await response.json().catch(()=>({}));
-      const detail=body.error?.data || {};
+      const detail = body?.error?.data || {};
       return error(request.id, -32000, 'Upstream HTTP ' + response.status + retry, {
-        reason:detail.reason || body.reason, retryAfter:delay ? Number(delay) : undefined,
+        reason:detail.reason || body?.reason, retryAfter:delay ? Number(delay) : undefined,
         resetsAt:response.headers.get('X-Quota-Reset'), remaining:response.headers.get('X-Checks-Remaining')
       });
     }
