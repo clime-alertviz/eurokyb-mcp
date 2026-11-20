@@ -12,8 +12,8 @@ function send(message) {
   process.stdout.write(JSON.stringify(message) + '\n');
 }
 
-function error(id, code, message) {
-  send({ jsonrpc: '2.0', id, error: { code, message } });
+function error(id, code, message, data) {
+  send({ jsonrpc: '2.0', id, error: { code, message, data } });
 }
 
 function parseRequest(line) {
@@ -51,7 +51,12 @@ async function forward(request) {
       await response.body?.cancel();
       const delay = response.headers.get('Retry-After');
       const retry = response.status === 429 && /^\d+$/.test(delay || '') ? '. Retry after ' + delay + ' seconds.' : '';
-      return error(request.id, -32000, 'Upstream HTTP ' + response.status + retry);
+      const body=await response.json().catch(()=>({}));
+      const detail=body.error?.data || {};
+      return error(request.id, -32000, 'Upstream HTTP ' + response.status + retry, {
+        reason:detail.reason || body.reason, retryAfter:delay ? Number(delay) : undefined,
+        resetsAt:response.headers.get('X-Quota-Reset'), remaining:response.headers.get('X-Checks-Remaining')
+      });
     }
     const reply = await response.json();
     if (reply?.jsonrpc !== '2.0' || reply.id !== request.id ||
