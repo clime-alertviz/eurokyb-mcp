@@ -1,9 +1,22 @@
 # EuroKYB MCP
 
+EuroKYB gives agents read-only tools for checking Czech suppliers, EU VAT numbers, IBAN checksums, Czech National Bank rates and public web pages.
+
+**Try it after connecting:** “Check Czech supplier IČO 00094943 and show its published bank accounts.” The leading zeros are part of the IČO. The report identifies the supplier through ARES and shows the accounts published in the Czech VAT Register when available.
+
 [Český návod (PDF)](guides/mcp/cs.pdf) · [English guide (PDF)](guides/mcp/en.pdf) · [Příručky online](https://alertviz.com/hub/guides/) · [Online guides](https://alertviz.com/hub/guides/en/)
 
+## Install in Cline
 
-EuroKYB gives agents read-only tools for checking Czech suppliers, EU VAT numbers, IBAN checksums, Czech National Bank rates and public web pages. Use the hosted endpoint directly or run the zero-dependency Node.js bridge in a client that uses stdio.
+With Cline CLI 3 installed, run the command below. It registers the hosted server in Cline. Free access works without a key.
+
+```sh
+cline mcp install eurokyb --transport http https://alertviz.com/api/eurokyb/mcp --yes
+```
+
+Start a fresh Cline session and ask the example question above. For other clients, use the [HTTPS](#connect-over-https) or [stdio](#connect-over-stdio) configuration below.
+
+## Available tools
 
 | Tool | When to use it | How to read the result |
 | --- | --- | --- |
@@ -33,6 +46,6 @@ EuroKYB gives agents read-only tools for checking Czech suppliers, EU VAT number
 }
 ```
 
-Node.js 18 or newer is required for the bridge. It sends tool arguments to the hosted EuroKYB service, including IBANs. IBAN checks are computed there without a bank lookup. Website requests contact the supplied destination. Direct access includes 50 completed checks per UTC calendar month and 5 checks/minute per public IP. For a subscription, use the bridge from this bundle or the direct npm tarball linked under **For developers** on the EuroKYB website. Run `node` with the extracted `bin/eurokyb-mcp.mjs` path as its argument. Set `EUROKYB_API_KEY` to share a Pro allowance (1,000/month) or Business allowance (5,000/month) across tools at 300/min. HTTP 429 includes the retry delay. Read GET /v1/quota to see your balance.
+Node.js 18 or newer is required for the bridge. It sends tool arguments to the hosted EuroKYB service, including IBANs. IBAN checks are computed there without a bank lookup. Website requests contact the supplied destination. Direct access includes 50 completed checks per UTC calendar month and 5 checks/minute per public IP. With a subscription, set `EUROKYB_API_KEY` in the bridge environment to share a Pro allowance (1,000/month) or Business allowance (5,000/month) across tools at 300/min. HTTP 429 includes the retry delay. Read GET /v1/quota to see your balance.
 
 Set `EUROKYB_MCP_URL` to use a compatible JSON-response endpoint for testing. Run `npm test` to check the stdio transport against a local fixture. The bridge repository is MIT licensed. [EuroKYB website and API](https://alertviz.com/eurokyb/)
